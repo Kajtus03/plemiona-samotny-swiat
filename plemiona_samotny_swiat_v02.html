@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#263b27">
+<title>Samotny Świat — Plemiona</title>
+<style>
+:root{color-scheme:dark;--bg:#171d17;--panel:#283529;--gold:#d9b76b;--line:#52634b;--txt:#eee8d6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px system-ui,-apple-system,sans-serif}
+header{padding:16px;background:#263b27;border-bottom:2px solid var(--gold);text-align:center}
+h1{font-size:23px;margin:0 0 5px}small{color:#d4c9a7}
+main{max-width:850px;margin:auto;padding:12px;display:grid;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px}
+h2{font-size:18px;margin:0 0 10px;color:var(--gold)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#1d281e;border-radius:8px;padding:9px;text-align:center}.stat b{display:block;font-size:19px}
+button{background:#8b6a32;color:#fff4d6;border:1px solid #d6b56c;border-radius:8px;padding:10px 12px;font-weight:650;font-size:15px;margin:3px;cursor:pointer}
+button:disabled{opacity:.4} .muted{color:#c2bea9;font-size:13px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid #465342;padding:8px 0}
+.actions{display:flex;flex-wrap:wrap;gap:3px}
+input{background:#172117;color:white;border:1px solid var(--line);padding:9px;border-radius:7px;width:90px}
+#log{max-height:170px;overflow:auto;font-size:14px;line-height:1.5}
+.village{background:#1d281e;border:1px solid #63704d;padding:10px;border-radius:8px;margin:8px 0}
+footer{text-align:center;padding:12px;color:#aaa;font-size:12px}
+</style>
+</head>
+<body>
+<header><h1>⚔ Samotny Świat</h1><small>Jednoosobowa strategia • świat 10× • zapis automatyczny</small></header>
+<main>
+<section class="panel"><h2>Twoja wioska</h2><div class="stats">
+<div class="stat">🪵 Drewno<b id="wood">500</b></div><div class="stat">🧱 Glina<b id="clay">500</b></div><div class="stat">⛏ Żelazo<b id="iron">500</b></div>
+<div class="stat">🌾 Zboże<b id="food">1000</b></div><div class="stat">🪙 Monety<b id="coins">0</b></div><div class="stat">😊 Lojalność<b id="loyalty">100</b></div>
+</div><p class="muted">Surowce przyrastają automatycznie. Gra zapisuje postęp w pamięci przeglądarki.</p></section>
+<section class="panel"><h2>Budynki</h2><div id="buildings"></div></section>
+<section class="panel"><h2>Wojsko</h2><div id="army"></div><div class="actions"><button onclick="recruit('spear')">Rekrutuj 10 włóczników</button><button onclick="recruit('sword')">Rekrutuj 10 mieczników</button><button onclick="recruit('noble')">Rekrutuj szlachcica</button></div><p class="muted">Szlachcic jest potrzebny do przejmowania wiosek. W tej wersji walka jest uproszczoną symulacją.</p></section>
+<section class="panel"><h2>Mapa okolicy</h2><div id="villages"></div></section>
+<section class="panel"><h2>Kopia zapasowa</h2><div class="actions"><button onclick="exportSave()">Pobierz kopię zapasową</button><button onclick="document.getElementById('importFile').click()">Wczytaj kopię</button><input id="importFile" type="file" accept="application/json" hidden onchange="importSave(event)"></div><p class="muted">Kopia JSON pozwala przenieść zapis. Nie czyść danych Safari bez wcześniejszego eksportu.</p></section>
+<section class="panel"><h2>Dziennik wydarzeń</h2><div id="log">Witaj, wodzu! Rozbuduj wioskę i przygotuj wojsko.</div></section>
+</main><footer>Prototyp 0.2 • Zapis lokalny na tym urządzeniu</footer>
+<script>
+const initial=()=>({wood:500,clay:500,iron:500,food:1000,coins:0,loyalty:100,build:{wood:1,clay:1,iron:1,barracks:1},army:{spear:20,sword:0,noble:0},villages:[{name:"Wioska Leśna",loyalty:65,owned:false,power:18},{name:"Kamienny Brzeg",loyalty:80,owned:false,power:35},{name:"Stare Pola",loyalty:100,owned:false,power:55}],log:["Witaj, wodzu! Rozbuduj wioskę i przygotuj wojsko."]});
+let s;try{s=JSON.parse(localStorage.getItem("samotnySwiat02"))||initial()}catch(e){s=initial()}
+const costs={wood:[100,80,50],clay:[80,100,50],iron:[70,70,100],barracks:[150,100,100]};
+const names={wood:"Tartak",clay:"Cegielnia",iron:"Kopalnia żelaza",barracks:"Koszary"};
+function save(){localStorage.setItem("samotnySwiat02",JSON.stringify(s))}
+function say(t){s.log.unshift(new Date().toLocaleTimeString()+" — "+t);s.log=s.log.slice(0,30);render();save()}
+function fmt(n){return Math.floor(n).toLocaleString("pl-PL")}
+function can(c){return s.wood>=c[0]&&s.clay>=c[1]&&s.iron>=c[2]}
+function spend(c){s.wood-=c[0];s.clay-=c[1];s.iron-=c[2]}
+function upgrade(k){let c=costs[k].map(x=>Math.ceil(x*Math.pow(1.65,s.build[k]-1)));if(!can(c)){say("Za mało surowców na ulepszenie.");return}spend(c);s.build[k]++;say(names[k]+" rozbudowany do poziomu "+s.build[k]+".")}
+function recruit(k){let c=k==="spear"?[80,30,30,1]:k==="sword"?[30,30,80,1]:[500,500,500,1];if(s.wood<c[0]||s.clay<c[1]||s.iron<c[2]||s.food<c[3]){say("Brakuje surowców lub zboża.");return}if(k==="noble"&&s.coins<1){say("Potrzebujesz 1 monety. Zdobędziesz ją po zwycięstwie.");return}s.wood-=c[0];s.clay-=c[1];s.iron-=c[2];s.food-=c[3];if(k==="noble")s.coins--;s.army[k]+=10; if(k==="noble")s.army[k]-=9;say(k==="noble"?"Zrekrutowano szlachcica.":"Zrekrutowano 10 jednostek.");}
+function attack(i){let v=s.villages[i];if(v.owned){say("Ta wioska już należy do Ciebie.");return}let force=s.army.spear+s.army.sword*1.5; if(force<v.power){s.army.spear=Math.floor(s.army.spear*.7);s.army.sword=Math.floor(s.army.sword*.7);say("Atak nieudany. Część wojska poległa.");return}s.army.spear=Math.floor(s.army.spear*.85);s.army.sword=Math.floor(s.army.sword*.85);v.loyalty=Math.max(0,v.loyalty-35);s.coins++;if(v.loyalty===0&&s.army.noble>0){v.owned=true;s.army.noble--;say("Podbito wioskę: "+v.name+"!");}else say("Wygrana bitwa pod "+v.name+". Lojalność przeciwnika: "+v.loyalty+". Zdobyto monetę.");}
+function render(){for(let k of ["wood","clay","iron","food","coins","loyalty"])document.getElementById(k).textContent=fmt(s[k]);document.getElementById("buildings").innerHTML=Object.keys(names).map(k=>{let c=costs[k].map(x=>Math.ceil(x*Math.pow(1.65,s.build[k]-1)));return `<div class="row"><span>${names[k]} — poziom ${s.build[k]}<br><small>${c.join(" / ")} (drewno / glina / żelazo)</small></span><button onclick="upgrade('${k}')">Ulepsz</button></div>`}).join("");
+document.getElementById("army").innerHTML=`🛡 Włócznicy: <b>${s.army.spear}</b>　⚔ Miecznicy: <b>${s.army.sword}</b>　👑 Szlachcice: <b>${s.army.noble}</b>`;
+document.getElementById("villages").innerHTML=s.villages.map((v,i)=>`<div class="village"><b>${v.name}</b> ${v.owned?"<b>— Twoja wioska</b>":`<br>Lojalność: ${v.loyalty} • Siła obrony: ${v.power}<br><button onclick="attack(${i})">Wyślij atak</button>`}</div>`).join("");
+document.getElementById("log").innerHTML=s.log.map(x=>`<div>${x}</div>`).join("");}
+function exportSave(){let a=document.createElement("a"),u=URL.createObjectURL(new Blob([JSON.stringify(s,null,2)],{type:"application/json"}));a.href=u;a.download="kopia-samotny-swiat.json";a.click();URL.revokeObjectURL(u)}
+function importSave(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{s=JSON.parse(r.result);save();render();say("Wczytano kopię zapasową.")}catch(err){alert("Nieprawidłowy plik kopii.")}};r.readAsText(f)}
+setInterval(()=>{s.wood+=s.build.wood*2;s.clay+=s.build.clay*2;s.iron+=s.build.iron*2;s.food+=3;save();render()},6000);
+render();save();
+</script></body></html>
